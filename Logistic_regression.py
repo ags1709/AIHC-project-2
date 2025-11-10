@@ -25,7 +25,7 @@ def load_data():
         idx = str(i+1)
         features.append(feature_map[f'features{idx}'])
         labels.append(np.array(y_mat[f'y{idx}'].T[0]))
-        assert features[i].shape[0] == labels[i].shape[0] #ensure same n of trials and labels
+        assert features[i].shape[0] == labels[i].shape[0]
 
     return features, labels
 
@@ -33,7 +33,6 @@ def run_logistic_regression():
 
     features, labels = load_data()
 
-    # Hyperparameters
     K = 10
     tol = 1e-6
     CV = KFold(K, shuffle=True, random_state=42)
@@ -58,14 +57,13 @@ def run_logistic_regression():
             best_train_mse = np.inf
             best_support = None
 
-            # Grow subset size j with SFS on TRAIN only; stop when improvement < tol
             for j in tqdm(range(1, X.shape[1] + 1), desc=f"Feature Selection (Pair {p+1}, Fold {k+1})", leave=False):
                 sfs = SequentialFeatureSelector(
                     base_lr,
                     n_features_to_select=j,
                     direction="forward",
                     n_jobs=-1,
-                    cv=5,  # inner CV on training data only
+                    cv=5,
                 )
                 sfs.fit(X_train, y_train)
                 support = sfs.get_support()
@@ -78,14 +76,12 @@ def run_logistic_regression():
                 mse_train = mean_squared_error(y_train, yhat_train)
 
                 if best_train_mse - mse_train < tol:
-                    # no meaningful improvement by increasing j further
                     break
                 else:
                     best_train_mse = mse_train
                     best_support = support
 
 
-            # Final refit on TRAIN with the selected features, then evaluate TRAIN and TEST
             final_model = clone(base_lr)
             final_model.fit(X_train[:, best_support], y_train)
 
@@ -95,7 +91,6 @@ def run_logistic_regression():
             train_MSE[p, k] = mean_squared_error(y_train, yhat_train_final)
             test_MSE[p, k] = mean_squared_error(y_test, yhat_test_final)
 
-            # Save boolean mask of selected features for later visualization
             sfs_features[p].append(best_support)
 
     results = []
